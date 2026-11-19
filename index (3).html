@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PTS-FT-004 Análisis de Trabajo Seguro (ATS) - PINTEGRALCO</title>
+  <style>
+    :root {
+      --primary: #c00000;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --ok: #16a34a;
+    }
+    * { box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; }
+    body { margin: 0; padding: 10px; background: var(--bg); color: #0f172a; font-size: 12px; }
+    .container { max-width: 1020px; margin: 0 auto; background: var(--card); border: 1px solid #94a3b8; padding: 14px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; background: #0f172a; color: #fff; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; align-items: center; justify-content: space-between; }
+    .toolbar button { border: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
+    .btn-cloud { background: #16a34a; color: #fff; }
+    .btn-print { background: #2563eb; color: #fff; }
+    .btn-add { background: #f59e0b; color: #000; }
+    .btn-clear { background: #64748b; color: #fff; }
+
+    table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+    th, td { border: 1px solid #000; padding: 4px 6px; vertical-align: middle; }
+    .brand-title { font-size: 19px; font-weight: 900; letter-spacing: 1px; }
+    .brand-sub { font-size: 9.5px; color: #475569; letter-spacing: 1.5px; }
+    .form-title { font-size: 15px; font-weight: bold; text-align: center; }
+    .th-red { background: #c00000; color: #fff; font-weight: bold; text-align: center; font-size: 11px; }
+    .th-gray { background: #e2e8f0; color: #000; font-weight: bold; font-size: 10.5px; text-align: left; }
+
+    input[type="text"], input[type="date"], textarea {
+      width: 100%; border: none; outline: none; font-size: 11.5px; background: transparent; font-family: inherit;
+    }
+    input[type="text"]:focus, textarea:focus { background: #fefce8; }
+
+    /* Etapas de trabajo */
+    .etapas-table th { background: #1e293b; color: #fff; font-size: 10.5px; text-align: center; }
+    .etapas-table td input { font-weight: normal; }
+
+    /* Grilla de Peligros y Medidas en 2 columnas */
+    .pm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
+    .pm-others-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+    .pm-item { display: flex; align-items: flex-start; gap: 6px; border: 1px solid #cbd5e1; padding: 4px 6px; border-radius: 4px; cursor: pointer; background: #fff; transition: 0.15s; }
+    .pm-item:hover { background: #f8fafc; }
+    .pm-item.checked { background: #fef2f2; border-color: #c00000; }
+    .pm-item.checked-ctrl { background: #f0fdf4; border-color: #16a34a; }
+    .pm-chk { width: 17px; height: 17px; accent-color: #c00000; margin-top: 1px; flex-shrink: 0; cursor: pointer; }
+    .pm-chk-ctrl { accent-color: #16a34a; }
+    .pm-code { font-weight: bold; min-width: 24px; color: #c00000; }
+    .pm-code-ctrl { color: #15803d; }
+
+    /* EPP Grid */
+    .epp-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-bottom: 6px; }
+    .epp-item { display: flex; align-items: center; gap: 5px; border: 1px solid #000; padding: 4px 5px; font-size: 10px; font-weight: bold; cursor: pointer; }
+    .epp-item.checked { background: #dcfce7; border-color: #15803d; }
+    .epp-item input { width: 15px; height: 15px; accent-color: #16a34a; flex-shrink: 0; }
+
+    /* Tabla de Operarios: Firma única + Check Lunes a Domingo */
+    .crew-table th { background: #c00000; color: #fff; font-size: 10px; text-align: center; padding: 4px 2px; }
+    .crew-table td { text-align: center; padding: 3px; }
+    .crew-table td.name-cell { text-align: left; width: 28%; }
+    .crew-table td.sig-cell { width: 30%; padding: 2px; }
+    .day-chk { width: 18px; height: 18px; accent-color: #16a34a; cursor: pointer; }
+    canvas.mini-sig { width: 100%; height: 42px; border: 1px dashed #94a3b8; background: #f8fafc; touch-action: none; cursor: crosshair; display: block; }
+    .btn-mini-clear { font-size: 9px; color: #64748b; text-decoration: underline; cursor: pointer; display: block; margin-top: 1px; }
+
+    /* Firmas Supervisores */
+    canvas.sup-sig { width: 100%; height: 70px; border: 1px dashed #94a3b8; background: #f8fafc; touch-action: none; cursor: crosshair; display: block; }
+
+    @media screen and (max-width: 768px) {
+      .pm-grid, .pm-others-grid { grid-template-columns: 1fr; }
+      .epp-grid { grid-template-columns: repeat(2, 1fr); }
+      .crew-wrap { overflow-x: auto; }
+      .crew-table { min-width: 680px; }
+    }
+
+    /* ESTILOS DE IMPRESIÓN Y PDF A4 COMPACTO (2 HOJAS EXACTAS) */
+    @page { size: A4 portrait; margin: 4mm; }
+    @media print {
+      body { background: #fff; padding: 0; margin: 0; font-size: 7px; line-height: 1.05; }
+      .container { border: none; box-shadow: none; padding: 0; max-width: 100%; }
+      .toolbar, .no-print, .btn-mini-clear { display: none !important; }
+      table { margin-bottom: 3px; }
+      th, td { padding: 1.5px 3px; font-size: 7px; }
+      input[type="text"], input[type="date"] { font-size: 7px; height: 11px; }
+      input::placeholder { color: transparent !important; }
+      .brand-title { font-size: 13px; }
+      .brand-sub { font-size: 7px; }
+      .form-title { font-size: 11px; }
+      .th-red, .crew-table th, .etapas-table th { background: #c00000 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 7.5px; padding: 2px; }
+      .th-gray { background: #e2e8f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 7px; }
+
+      /* Mantener 2 columnas en impresión para Peligros, Medidas y Otros */
+      .pm-grid, .pm-others-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 2px 6px !important; margin-bottom: 2px !important; }
+      .pm-item { border: 1px solid #cbd5e1 !important; padding: 1px 3px !important; font-size: 6.4px !important; line-height: 1.04 !important; border-radius: 2px !important; gap: 3px !important; align-items: center !important; }
+      .pm-chk { width: 9px !important; height: 9px !important; margin: 0 !important; }
+      .pm-code { min-width: 16px !important; font-size: 6.5px !important; }
+
+      /* Mantener 5 columnas en impresión para EPP */
+      .epp-grid { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 2px !important; margin-bottom: 2px !important; }
+      .epp-item { padding: 1.5px 2px !important; font-size: 5.8px !important; line-height: 1.02 !important; gap: 2px !important; }
+      .epp-item input { width: 8px !important; height: 8px !important; margin: 0 !important; }
+
+      canvas.mini-sig, .sig-cell img { height: 24px !important; border: none !important; background: #fff !important; }
+      canvas.sup-sig, .sup-img { height: 34px !important; border: none !important; background: #fff !important; }
+      .day-chk { width: 10px !important; height: 10px !important; }
+      .page-break { page-break-before: always; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="toolbar no-print">
+    <div><strong>PINTEGRALCO</strong> — Análisis de Trabajo Seguro (ATS)</div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <button type="button" class="btn-cloud" id="btnGuardarNube" onclick="enviarATSaDrive()">☁️ Guardar ATS en Nube</button>
+      <button type="button" class="btn-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
+      <button type="button" class="btn-clear" onclick="limpiarTodo()">Limpiar</button>
+    </div>
+  </div>
+
+  <!-- ENCABEZADO OFICIAL PTS-FT-004 -->
+  <table>
+    <tr>
+      <td style="width:28%;">
+        <div class="brand-title"><span style="color:#c00000;">P</span>INTEGRALCO</div>
+        <div class="brand-sub">SERVICIOS INTEGRALES</div>
+      </td>
+      <td class="form-title" style="width:48%;">ANÁLISIS DE TRABAJO SEGURO (ATS)</td>
+      <td style="width:24%; font-size:9.5px;">
+        <div><strong>Cód.:</strong> PTS-FT-004</div>
+        <div><strong>Rev.:</strong> 00 | <strong>Hoja:</strong> 1 y 2</div>
+        <div><strong>Fecha Elab.:</strong> 01/10/2025</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- DATOS GENERALES DEL TRABAJO -->
+  <table>
+    <tr>
+      <td class="th-gray" style="width:28%;">PROYECTO / OBRA / SERVICIO</td>
+      <td colspan="3"><input type="text" id="proyecto" placeholder="Ingrese proyecto u obra..." /></td>
+    </tr>
+    <tr>
+      <td class="th-gray">DESCRIPCIÓN DEL TRABAJO A REALIZAR</td>
+      <td colspan="3"><input type="text" id="descripcion" placeholder="Describa la tarea principal..." /></td>
+    </tr>
+    <tr>
+      <td class="th-gray">SECTOR / CUADRILLA</td>
+      <td colspan="3"><input type="text" id="sector" placeholder="Ej: Mantenimiento / Cuadrilla 1" /></td>
+    </tr>
+    <tr>
+      <td class="th-gray">FECHA DE EJECUCIÓN</td>
+      <td style="width:22%;"><input type="date" id="fechaEjecucion" /></td>
+      <td class="th-gray" style="width:20%;">LUGAR DE TRABAJO</td>
+      <td style="width:30%;"><input type="text" id="lugar" placeholder="Ej: Yacimiento / Base..." /></td>
+    </tr>
+  </table>
+
+  <!-- ETAPAS PRINCIPALES DEL TRABAJO -->
+  <table class="etapas-table">
+    <thead>
+      <tr>
+        <th style="width:5%;">N°</th>
+        <th style="width:45%;">ETAPAS PRINCIPALES DEL TRABAJO</th>
+        <th style="width:25%;">PELIGROS / RIESGOS (N° SEGÚN TABLA)</th>
+        <th style="width:25%;">MEDIDAS DE CONTROL (LETRA SEGÚN TABLA)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td style="text-align:center;font-weight:bold;">1</td><td><input type="text" class="etapa-desc" /></td><td><input type="text" class="etapa-pel" placeholder="Ej: 1, 2, 10" /></td><td><input type="text" class="etapa-med" placeholder="Ej: A, B, K" /></td></tr>
+      <tr><td style="text-align:center;font-weight:bold;">2</td><td><input type="text" class="etapa-desc" /></td><td><input type="text" class="etapa-pel" /></td><td><input type="text" class="etapa-med" /></td></tr>
+      <tr><td style="text-align:center;font-weight:bold;">3</td><td><input type="text" class="etapa-desc" /></td><td><input type="text" class="etapa-pel" /></td><td><input type="text" class="etapa-med" /></td></tr>
+      <tr><td style="text-align:center;font-weight:bold;">4</td><td><input type="text" class="etapa-desc" /></td><td><input type="text" class="etapa-pel" /></td><td><input type="text" class="etapa-med" /></td></tr>
+      <tr><td style="text-align:center;font-weight:bold;">5</td><td><input type="text" class="etapa-desc" /></td><td><input type="text" class="etapa-pel" /></td><td><input type="text" class="etapa-med" /></td></tr>
+    </tbody>
+  </table>
+
+  <!-- PELIGROS / RIESGOS AL QUE ME EXPONGO (1 al 28 + Otros 29-34) -->
+  <table>
+    <tr><th class="th-red">PELIGROS / RIESGOS AL QUE ME EXPONGO (MARQUE LAS CASILLAS APLICABLES)</th></tr>
+    <tr>
+      <td style="padding:4px;">
+        <div class="pm-grid" id="grid-peligros"></div>
+        <div style="margin-top:3px; border-top:1px solid #000; padding-top:3px;">
+          <strong style="font-size:9px;">OTROS PELIGROS / RIESGOS IDENTIFICADOS:</strong>
+          <div class="pm-others-grid">
+            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="29" /><span class="pm-code">29</span><input type="text" placeholder="Otro peligro..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="32" /><span class="pm-code">32</span><input type="text" placeholder="Otro peligro..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="30" /><span class="pm-code">30</span><input type="text" placeholder="Otro peligro..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="33" /><span class="pm-code">33</span><input type="text" placeholder="Otro peligro..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="31" /><span class="pm-code">31</span><input type="text" placeholder="Otro peligro..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="34" /><span class="pm-code">34</span><input type="text" placeholder="Otro peligro..." /></div>
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- MEDIDAS DE CONTROL A IMPLEMENTAR (A a A4 + Otras A5-A10) -->
+  <table>
+    <tr><th class="th-red" style="background:#1e293b;">MEDIDAS DE CONTROL A IMPLEMENTAR (MARQUE LAS CASILLAS APLICABLES)</th></tr>
+    <tr>
+      <td style="padding:4px;">
+        <div class="pm-grid" id="grid-medidas"></div>
+        <div style="margin-top:3px; border-top:1px solid #000; padding-top:3px;">
+          <strong style="font-size:9px;">OTRAS MEDIDAS DE CONTROL A IMPLEMENTAR:</strong>
+          <div class="pm-others-grid">
+            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A5" /><span class="pm-code pm-code-ctrl">A5</span><input type="text" placeholder="Otra medida..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A8" /><span class="pm-code pm-code-ctrl">A8</span><input type="text" placeholder="Otra medida..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A6" /><span class="pm-code pm-code-ctrl">A6</span><input type="text" placeholder="Otra medida..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A9" /><span class="pm-code pm-code-ctrl">A9</span><input type="text" placeholder="Otra medida..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A7" /><span class="pm-code pm-code-ctrl">A7</span><input type="text" placeholder="Otra medida..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A10" /><span class="pm-code pm-code-ctrl">A10</span><input type="text" placeholder="Otra medida..." /></div>
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- HERRAMIENTAS Y EPP -->
+  <table>
+    <tr>
+      <td class="th-gray" style="width:35%;">HERRAMIENTAS MANUALES/ELÉCTRICAS, MAQUINARIAS Y/O EQUIPOS A UTILIZAR:</td>
+      <td><input type="text" id="herramientas" placeholder="Detallar herramientas y equipos..." /></td>
+    </tr>
+  </table>
+
+  <table>
+    <tr><th class="th-red">IDENTIFICACIÓN DE ELEMENTOS DE PROTECCIÓN PERSONAL (EPP)</th></tr>
+    <tr>
+      <td style="padding:4px;">
+        <div class="epp-grid" id="grid-epp"></div>
+        <div style="display:flex; align-items:center; gap:6px; border-top:1px solid #cbd5e1; padding-top:3px;">
+          <strong style="font-size:9px;">OTROS EPP:</strong>
+          <input type="text" id="otrosEpp" placeholder="Especifique otros elementos de protección..." />
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- HOJA 2: PARTICIPACIÓN DE OPERARIOS (FIRMA ÚNICA + CHECK DÍAS DE LA SEMANA) -->
+  <div class="page-break"></div>
+  <div style="background:#f8fafc; border:1px solid #000; padding:5px 7px; font-size:9.5px; font-style:italic; margin-bottom:5px;">
+    “Declaro haber participado del presente ATS, comprender los peligros y riesgos identificados y comprometerme a cumplir con las medidas de control y Reglas de Oro aplicables. Me comprometo a actuar con responsabilidad y detener la tarea si se presenta una condición insegura o no controlada.”
+  </div>
+
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;" class="no-print">
+    <strong style="font-size:11px;">PERSONAL PARTICIPANTE (Firma una vez y marca los días trabajados):</strong>
+    <button type="button" class="btn-add" onclick="agregarFilaOperario()">+ Agregar Operario</button>
+  </div>
+
+  <div class="crew-wrap">
+    <table class="crew-table" id="tablaOperarios">
+      <thead>
+        <tr>
+          <th style="width:28%;">APELLIDO Y NOMBRE</th>
+          <th style="width:30%;">FIRMA DEL OPERARIO</th>
+          <th style="width:6%;">LUN</th>
+          <th style="width:6%;">MAR</th>
+          <th style="width:6%;">MIÉ</th>
+          <th style="width:6%;">JUE</th>
+          <th style="width:6%;">VIE</th>
+          <th style="width:6%;">SÁB</th>
+          <th style="width:6%;">DOM</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-operarios"></tbody>
+    </table>
+  </div>
+
+  <table>
+    <tr>
+      <td class="th-gray" style="width:32%;">FECHA DE FINALIZACIÓN DE ACTIVIDAD:</td>
+      <td style="width:25%;"><input type="date" id="fechaFin" /></td>
+      <td class="th-gray" style="width:15%;">OBSERVACIONES:</td>
+      <td><input type="text" id="observaciones" placeholder="Novedades o cierre de tarea..." /></td>
+    </tr>
+  </table>
+
+  <!-- FIRMAS SUPERVISOR Y SYH -->
+  <table>
+    <tr>
+      <th class="th-red" style="width:50%;">SUPERVISOR OPERATIVO</th>
+      <th class="th-red" style="width:50%;">RESPONSABLE DE SEGURIDAD E HIGIENE</th>
+    </tr>
+    <tr>
+      <td style="padding:5px;">
+        <input type="text" id="supNombre" placeholder="Apellido y Nombre" style="border-bottom:1px solid #000; margin-bottom:4px; font-weight:bold;" />
+        <canvas id="sigSup" class="sup-sig"></canvas>
+        <div style="display:flex; justify-content:space-between; font-size:9px; color:#475569; margin-top:2px;">
+          <span>Firma Supervisor Operativo</span>
+          <a href="#" class="no-print" onclick="limpiarCanvas('sigSup'); return false;">Borrar firma</a>
+        </div>
+      </td>
+      <td style="padding:5px;">
+        <input type="text" id="syhNombre" placeholder="Apellido y Nombre" style="border-bottom:1px solid #000; margin-bottom:4px; font-weight:bold;" />
+        <canvas id="sigSyh" class="sup-sig"></canvas>
+        <div style="display:flex; justify-content:space-between; font-size:9px; color:#475569; margin-top:2px;">
+          <span>Firma Responsable SyH</span>
+          <a href="#" class="no-print" onclick="limpiarCanvas('sigSyh'); return false;">Borrar firma</a>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <div style="font-size:8.5px; color:#334155; border:1px solid #000; padding:4px 6px; background:#f8fafc;">
+    <div><strong>Peligro:</strong> Fuente con un potencial para causar lesiones y deterioro de la salud (Norma ISO 45001:2018)</div>
+    <div><strong>Riesgo:</strong> Efecto de la incertidumbre, Incertidumbre es el estado, incluso parcial, de deficiencia de información relacionada con la comprensión o conocimiento de un evento, su consecuencia o su probabilidad. (Norma ISO 45001:2018)</div>
+  </div>
+</div>
+
+<script>
+  const GOOGLE_SCRIPT_URL = "https://script.google.com/a/macros/pintegralco.com.ar/s/AKfycbx6ZxdpngJ-aojfGhZ7-86tnyhLpuqxik6Ql8JYyb5XKgtCudT4i9yP2v9AENCzRfWBDg/exec";
+
+  const PELIGROS = [
+    ["1", "Trabajo en altura sobre 1,80 metros"],
+    ["15", "Atropello por vehículos o equipos"],
+    ["2", "Superposición de tareas. Caídas de mismo nivel"],
+    ["16", "Equipos/maquinarias en movimiento"],
+    ["3", "Interacción con equipos, herramientas o áreas de trabajo"],
+    ["17", "Atrapamiento por partes móviles"],
+    ["4", "Cargas suspendidas. Maniobras de izaje."],
+    ["18", "Golpeado por eslingas o accesorios de izaje"],
+    ["5", "Energía contenida (hidráulica, neumática, eléctrica y potencial)"],
+    ["19", "Exceso de Ruido."],
+    ["6", "Proyección de material o partículas"],
+    ["20", "Condiciones climáticas adversas"],
+    ["7", "Generación de chispas, llama abierta o calor por trabajos en caliente"],
+    ["21", "Fatiga o cansancio durante la tarea"],
+    ["8", "Presencia de gases, humos y/o polvo"],
+    ["22", "Personal sin experiencia para la tarea"],
+    ["9", "Derrumbe en excavaciones"],
+    ["23", "Transporte manual de cargas"],
+    ["10", "Caída de objetos desde altura"],
+    ["24", "Chispas o fuego por amolado"],
+    ["11", "Exposición a gases tóxicos, atmósferas peligrosas."],
+    ["25", "Uso de pinturas o solventes"],
+    ["12", "Contacto con productos químicos"],
+    ["26", "Fugas de fluidos en maquinaria"],
+    ["13", "Quemaduras por soldadura o superficies calientes"],
+    ["27", "Contacto con elementos corto-punzantes"],
+    ["14", "Exposición a radiación ultravioleta e infrarroja"],
+    ["28", "Ingreso a espacios confinados"]
+  ];
+
+  const MEDIDAS = [
+    ["A", "Usar arnés con línea de vida y punto de anclaje certificado. Asegurar vías y plan de rescate."],
+    ["O", "Usar vías de circulación, señalizar y mantener distancia segura"],
+    ["B", "Mantener orden y limpieza en área de trabajo. No dejar objetos sobre zona de circulación."],
+    ["P", "Planificar maniobras y dar aviso a personal circundante. Control preoperativo. Usar señalero."],
+    ["C", "Respetar zonas operativas, mantener distancia segura. No intervenir sin autorización."],
+    ["Q", "Usar resguardos y operar a distancia segura"],
+    ["D", "Delimitar área y no ubicarse bajo cargas. Usar cuerdas guías. Verificar elementos de izaje. Diagrama de carga"],
+    ["R", "Verificar estado y ubicación correcta del personal"],
+    ["F", "Aplicar bloqueo y etiquetado (LOTO) antes de intervenir equipos o sistemas."],
+    ["S", "Limitar exposición y generar barreras de aislamiento. Uso de protección auditiva."],
+    ["G", "Colocar pantallas de contención y señalizar zona."],
+    ["T", "Suspender tareas al aire libre si hay lluvia, vientos fuertes y tormentas eléctricas."],
+    ["H", "Controlar entorno, verificar ausencia material combustible y tener extintor operativo."],
+    ["W", "Planificar pausas activas y rotación de tareas."],
+    ["I", "Usar protección respiratoria. Ventilación adecuada. Monitoreo del aire. Señalización."],
+    ["X", "Verificación de competencias, capacitación previa y supervisión directa."],
+    ["J", "Taludar, apuntalar o cubrir zanjas según profundidad"],
+    ["Y", "Uso de ayudas mecánicas, aplicar técnicas de levantamiento seguro"],
+    ["K", "Prohibir tránsito bajo zona de trabajo y usar porta-herramientas"],
+    ["Z", "Alejar materiales inflamables y colocar protector de chispas"],
+    ["L", "Monitoreo de atmósferas y ventilación adecuada."],
+    ["A1", "Preparar superficie y ventilar zona adecuadamente. Correcto etiquetado según SGA."],
+    ["M", "Contar con ficha de seguridad (MSDS) y aplicar recomendaciones de manipulación del producto."],
+    ["A2", "Mantenimiento preventivo, inspección preoperativa. Dar aviso a supervisor inmediato."],
+    ["N", "Proteger áreas cercanas, ubicar manta ignífuga, delimitar zona de trabajo"],
+    ["A3", "Manipular con precaución. Desechar objetos dañados"],
+    ["Ñ", "Delimitar zona de trabajo y señalizar. Barreras de protección visual para terceros."],
+    ["A4", "Solicitar permiso de trabajo, contar con supervisión directa y la medición de gases por personal competente."]
+  ];
+
+  const EPPS = [
+    "CASCO DE SEGURIDAD", "CALZADO DE SEGURIDAD", "DELANTAL CUERO", "BARBIJOS CON FILTRO PARA POLVO", "CASCO CON MENTONERA",
+    "MAMELUCO IGNÍFUGO", "GUANTES ANTICORTE", "MANGAS DE CUERO", "CHALECO REFLECTIVO", "CASCO CON FACIAL",
+    "LENTE DE SEGURIDAD", "GUANTES DE IMPACTO", "POLAINAS", "MAMELUCO DESCARTABLE", "GUANTES DIELÉCTRICOS",
+    "TAPONES AUDITIVOS", "GUANTES DE SOLDADOR", "CARETA SOLDADOR", "ARNÉS DE CUERPO COMPLETO", "DETECTOR MULTIGAS",
+    "PROTECCIÓN AUDITIVA TIPO COPA", "GUANTES DE NITRILO", "MÁSCARA FACIAL AMOLADOR", "CABO DE VIDA C/ ABSORVEDOR", "SISTEMA DE RESCATE",
+    "SEMIMÁSCARAS C/ FILTRO VAPORES", "GUANTES DE VAQUETA", "CAMPERA DE SOLDADOR", "LÍNEA DE VIDA / ANCLAJE", "BOTAS PETROLERAS"
+  ];
+
+  function renderCheckItems(containerId, lista, esControl) {
+    const grid = document.getElementById(containerId);
+    lista.forEach(([cod, texto]) => {
+      const label = document.createElement("label");
+      label.className = "pm-item";
+      label.innerHTML = `
+        <input type="checkbox" class="pm-chk ${esControl ? 'pm-chk-ctrl' : ''}" data-code="${cod}" data-text="${texto}" />
+        <span class="pm-code ${esControl ? 'pm-code-ctrl' : ''}">${cod}</span>
+        <span>${texto}</span>
+      `;
+      const chk = label.querySelector("input");
+      chk.addEventListener("change", () => {
+        label.classList.toggle(esControl ? "checked-ctrl" : "checked", chk.checked);
+      });
+      grid.appendChild(label);
+    });
+  }
+
+  function renderEPP() {
+    const grid = document.getElementById("grid-epp");
+    EPPS.forEach(epp => {
+      const label = document.createElement("label");
+      label.className = "epp-item";
+      label.innerHTML = `<input type="checkbox" value="${epp}" /><span>${epp}</span>`;
+      const chk = label.querySelector("input");
+      chk.addEventListener("change", () => label.classList.toggle("checked", chk.checked));
+      grid.appendChild(label);
+    });
+  }
+
+  let operarioCount = 0;
+  function agregarFilaOperario() {
+    operarioCount++;
+    const canvasId = "opSig_" + operarioCount;
+    const tbody = document.getElementById("tbody-operarios");
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="name-cell"><input type="text" class="op-nombre" placeholder="Apellido y Nombre..." /></td>
+      <td class="sig-cell">
+        <canvas id="${canvasId}" class="mini-sig"></canvas>
+        <span class="btn-mini-clear no-print" onclick="limpiarCanvas('${canvasId}')">Borrar firma</span>
+      </td>
+      <td><input type="checkbox" class="day-chk" data-day="Lun" /></td>
+      <td><input type="checkbox" class="day-chk" data-day="Mar" /></td>
+      <td><input type="checkbox" class="day-chk" data-day="Mié" /></td>
+      <td><input type="checkbox" class="day-chk" data-day="Jue" /></td>
+      <td><input type="checkbox" class="day-chk" data-day="Vie" /></td>
+      <td><input type="checkbox" class="day-chk" data-day="Sáb" /></td>
+      <td><input type="checkbox" class="day-chk" data-day="Dom" /></td>
+    `;
+    tbody.appendChild(tr);
+    initPad(canvasId);
+  }
+
+  function initPad(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let drawing = false;
+
+    function resize() {
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      canvas.width = (canvas.offsetWidth || 200) * ratio;
+      canvas.height = (canvas.offsetHeight || 42) * ratio;
+      ctx.scale(ratio, ratio);
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#0f172a";
+    }
+    resize();
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      return { x: cx - rect.left, y: cy - rect.top };
+    }
+
+    canvas.addEventListener("mousedown", e => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+    canvas.addEventListener("mousemove", e => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+    window.addEventListener("mouseup", () => { drawing = false; });
+
+    canvas.addEventListener("touchstart", e => { e.preventDefault(); drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }, { passive: false });
+    canvas.addEventListener("touchmove", e => { e.preventDefault(); if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }, { passive: false });
+    canvas.addEventListener("touchend", () => { drawing = false; });
+  }
+
+  function limpiarCanvas(id) {
+    const c = document.getElementById(id);
+    if (c) c.getContext("2d").clearRect(0, 0, c.width, c.height);
+  }
+
+  function prepararSnapshotHTML() {
+    document.querySelectorAll("input[type='text'], input[type='date']").forEach(inp => inp.setAttribute("value", inp.value));
+    document.querySelectorAll("input[type='checkbox']").forEach(chk => {
+      if (chk.checked) chk.setAttribute("checked", "checked");
+      else chk.removeAttribute("checked");
+    });
+
+    const clone = document.documentElement.cloneNode(true);
+    document.querySelectorAll("canvas").forEach(orig => {
+      const cc = clone.querySelector("#" + orig.id);
+      if (cc) {
+        const img = document.createElement("img");
+        img.src = orig.toDataURL("image/png");
+        img.style.width = "100%";
+        img.style.height = orig.classList.contains("sup-sig") ? "34px" : "24px";
+        img.style.objectFit = "contain";
+        cc.parentNode.replaceChild(img, cc);
+      }
+    });
+    clone.querySelectorAll(".no-print").forEach(el => el.remove());
+    return "<!DOCTYPE html>\n" + clone.outerHTML;
+  }
+
+  async function enviarATSaDrive() {
+    const btn = document.getElementById("btnGuardarNube");
+    const peligrosSel = [];
+    document.querySelectorAll("#grid-peligros input:checked").forEach(c => peligrosSel.push(`${c.dataset.code}-${c.dataset.text}`));
+    const medidasSel = [];
+    document.querySelectorAll("#grid-medidas input:checked").forEach(c => medidasSel.push(`${c.dataset.code}`));
+    const eppsSel = [];
+    document.querySelectorAll("#grid-epp input:checked").forEach(c => eppsSel.push(c.value));
+
+    const operarios = [];
+    document.querySelectorAll("#tbody-operarios tr").forEach(tr => {
+      const nom = tr.querySelector(".op-nombre").value.trim();
+      if (nom) {
+        const dias = [];
+        tr.querySelectorAll(".day-chk:checked").forEach(d => dias.push(d.dataset.day));
+        operarios.push(`${nom} (${dias.join(",") || "Sin días"})`);
+      }
+    });
+
+    const payload = {
+      tipoFormulario: "ATS",
+      fecha: document.getElementById("fechaEjecucion").value,
+      proyecto: document.getElementById("proyecto").value.trim(),
+      descripcion: document.getElementById("descripcion").value.trim(),
+      sector: document.getElementById("sector").value.trim(),
+      lugar: document.getElementById("lugar").value.trim(),
+      peligrosDetalle: peligrosSel.join("; ") || "Ninguno",
+      medidasDetalle: medidasSel.join(", ") || "Ninguna",
+      eppDetalle: eppsSel.join(", ") || "Ninguno",
+      operariosDetalle: operarios.join(" | ") || "Sin operarios",
+      supervisor: document.getElementById("supNombre").value.trim(),
+      responsableSyH: document.getElementById("syhNombre").value.trim(),
+      observaciones: document.getElementById("observaciones").value.trim(),
+      htmlSnapshot: prepararSnapshotHTML()
+    };
+
+    if (!payload.proyecto && !payload.descripcion) {
+      alert("Por favor completa al menos el Proyecto o la Descripción del trabajo antes de guardar.");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "⏳ Guardando ATS...";
+
+    try {
+      await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      alert("✅ ATS guardado correctamente en el Excel y respaldo PDF en Drive.");
+    } catch (e) {
+      alert("⚠️ Error de conexión. Verifica tu señal de internet e intenta de nuevo.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "☁️ Guardar ATS en Nube";
+    }
+  }
+
+  function limpiarTodo() {
+    if (!confirm("¿Limpiar todo el formulario ATS?")) return;
+    document.querySelectorAll("input[type='text']").forEach(i => i.value = "");
+    document.querySelectorAll("input[type='checkbox']").forEach(c => { c.checked = false; c.dispatchEvent(new Event("change")); });
+    document.querySelectorAll("canvas").forEach(c => limpiarCanvas(c.id));
+    document.getElementById("fechaEjecucion").valueAsDate = new Date();
+  }
+
+  window.addEventListener("DOMContentLoaded", () => {
+    renderCheckItems("grid-peligros", PELIGROS, false);
+    renderCheckItems("grid-medidas", MEDIDAS, true);
+    renderEPP();
+
+    for (let i = 0; i < 6; i++) agregarFilaOperario();
+
+    document.getElementById("fechaEjecucion").valueAsDate = new Date();
+    initPad("sigSup");
+    initPad("sigSyh");
+  });
+</script>
+</body>
+</html>
