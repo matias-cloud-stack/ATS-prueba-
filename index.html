@@ -181,7 +181,7 @@
 
   <!-- ETAPAS PRINCIPALES DEL TRABAJO -->
   <div class="no-print" style="font-size:10.5px; color:#475569; margin-bottom:3px;">
-    💡 <strong>Autocompletado rápido:</strong> Haz clic en una fila de etapa (1 a 5) para seleccionarla; al marcar riesgos o medidas abajo, se cargarán automáticamente en esa fila.
+    💡 <strong>Carga independiente por etapa:</strong> Haz clic en una etapa (1 a 5) para seleccionarla; al pasar a otra etapa, las casillas de abajo se limpian para que puedas volver a elegir cualquier riesgo o medida repetido.
   </div>
   <table class="etapas-table" id="tablaEtapas">
     <thead>
@@ -412,13 +412,27 @@
   ];
 
   /* =========================================================
-     SINCRONIZACIÓN AUTOMÁTICA DE RIESGOS Y MEDIDAS EN LA ETAPA ACTIVA
+     SINCRONIZACIÓN INDEPENDIENTE POR ETAPA (PERMITIENDO REPETIR CÓDIGOS)
      ========================================================= */
+  function limpiarCasillasPeligrosYMedidas() {
+    document.querySelectorAll(".pm-chk").forEach(chk => {
+      chk.checked = false;
+      const item = chk.closest(".pm-item");
+      if (item) item.classList.remove("checked", "checked-ctrl");
+    });
+  }
+
   function seleccionarFilaEtapa(idx) {
+    const cambioDeEtapa = (filaEtapaActiva !== idx);
     filaEtapaActiva = idx;
     document.querySelectorAll("#tablaEtapas tbody tr").forEach((tr, i) => {
       tr.classList.toggle("etapa-activa", i === idx);
     });
+
+    // Al cambiar a otra etapa, desmarcar todas las casillas de abajo para permitir elegir de nuevo desde cero
+    if (cambioDeEtapa) {
+      limpiarCasillasPeligrosYMedidas();
+    }
   }
 
   function sincronizarCodigoEtapa(chk, tipo) {
@@ -443,16 +457,39 @@
       }
       inputTarget.value = actuales.join(", ");
     } else {
-      // Si se desmarca, quitarlo de la fila activa (o de cualquier fila donde esté)
-      filas.forEach(tr => {
-        const inp = tr.querySelector(tipo === "pel" ? ".etapa-pel" : ".etapa-med");
-        const filtrados = inp.value
-          .split(",")
-          .map(s => s.trim())
-          .filter(s => s !== "" && s !== codigo);
-        inp.value = filtrados.join(", ");
-      });
+      // Si se desmarca, quitarlo únicamente de la etapa activa sin tocar las otras etapas
+      const filtrados = actuales.filter(s => s !== codigo);
+      inputTarget.value = filtrados.join(", ");
     }
+  }
+
+  // Antes de imprimir o guardar PDF/Excel, marcar automáticamente en las tablas inferiores
+  // la unión de todos los riesgos y medidas usados en todas las etapas (1 a 5)
+  function consolidarCasillasDeTodasLasEtapas() {
+    const todosPeligros = new Set();
+    const todasMedidas = new Set();
+
+    document.querySelectorAll("#tablaEtapas tbody tr").forEach(tr => {
+      tr.querySelector(".etapa-pel").value.split(",").forEach(c => {
+        const clean = c.trim().toUpperCase();
+        if (clean) todosPeligros.add(clean);
+      });
+      tr.querySelector(".etapa-med").value.split(",").forEach(c => {
+        const clean = c.trim().toUpperCase();
+        if (clean) todasMedidas.add(clean);
+      });
+    });
+
+    document.querySelectorAll(".pm-chk").forEach(chk => {
+      const code = (chk.dataset.code || "").toUpperCase();
+      const esMed = chk.classList.contains("pm-chk-ctrl");
+      const debeEstarMarcado = esMed ? todasMedidas.has(code) : todosPeligros.has(code);
+      if (debeEstarMarcado) {
+        chk.checked = true;
+        const item = chk.closest(".pm-item");
+        if (item) item.classList.add(esMed ? "checked-ctrl" : "checked");
+      }
+    });
   }
 
   function renderCheckItems(containerId, lista, esControl) {
@@ -560,6 +597,7 @@
   }
 
   function guardarPlantillaLocal() {
+    consolidarCasillasDeTodasLasEtapas();
     const proyecto = document.getElementById("proyecto").value.trim();
     const descripcion = document.getElementById("descripcion").value.trim();
     const sector = document.getElementById("sector").value.trim();
@@ -675,7 +713,6 @@
     document.getElementById("fechaFin").value = "";
     document.getElementById("observaciones").value = "";
 
-    // Primero marcar checkboxes (visual) y luego restaurar la distribución exacta por etapas
     document.querySelectorAll("#grid-peligros input[type='checkbox']").forEach(chk => {
       chk.checked = (p.peligrosCod || []).includes(chk.dataset.code);
       chk.closest(".pm-item").classList.toggle("checked", chk.checked);
@@ -751,6 +788,7 @@
   }
 
   function prepararSnapshotHTML() {
+    consolidarCasillasDeTodasLasEtapas();
     document.querySelectorAll("input[type='text'], input[type='date']").forEach(inp => inp.setAttribute("value", inp.value));
     document.querySelectorAll("input[type='checkbox']").forEach(chk => {
       if (chk.checked) chk.setAttribute("checked", "checked");
@@ -774,6 +812,7 @@
   }
 
   async function enviarATSaDrive() {
+    consolidarCasillasDeTodasLasEtapas();
     const btn = document.getElementById("btnGuardarNube");
     const peligrosSel = [];
     document.querySelectorAll("#grid-peligros input:checked").forEach(c => peligrosSel.push(`${c.dataset.code}-${c.dataset.text}`));
@@ -847,8 +886,11 @@
     });
     document.querySelectorAll("canvas").forEach(c => limpiarCanvas(c.id));
     document.getElementById("fechaEjecucion").valueAsDate = new Date();
-    seleccionarFilaEtapa(0);
+    filaEtapaActiva = 0;
+    document.querySelectorAll("#tablaEtapas tbody tr").forEach((tr, i) => tr.classList.toggle("etapa-activa", i === 0));
   }
+
+  window.addEventListener("beforeprint", consolidarCasillasDeTodasLasEtapas);
 
   window.addEventListener("DOMContentLoaded", () => {
     renderCheckItems("grid-peligros", PELIGROS, false);
@@ -861,7 +903,6 @@
     initPad("sigSup");
     initPad("sigSyh");
     actualizarSelectorPlantillas();
-    seleccionarFilaEtapa(0);
   });
 </script>
 </body>
