@@ -18,9 +18,15 @@
     .toolbar { display: flex; flex-wrap: wrap; gap: 8px; background: #0f172a; color: #fff; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; align-items: center; justify-content: space-between; }
     .toolbar button { border: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
     .btn-cloud { background: #16a34a; color: #fff; }
+    .btn-repeat { background: #f59e0b; color: #000; }
     .btn-print { background: #2563eb; color: #fff; }
     .btn-add { background: #f59e0b; color: #000; }
     .btn-clear { background: #64748b; color: #fff; }
+
+    /* Barra de tareas guardadas (Plantillas / Repetir Tarea) */
+    .saved-bar { display: none; background: #fefce8; border: 1px solid #f59e0b; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .saved-bar select { flex: 1; min-width: 220px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; }
+    .saved-bar button { border: none; padding: 6px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 11.5px; }
 
     table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
     th, td { border: 1px solid #000; padding: 4px 6px; vertical-align: middle; }
@@ -35,9 +41,12 @@
     }
     input[type="text"]:focus, textarea:focus { background: #fefce8; }
 
-    /* Etapas de trabajo */
+    /* Etapas de trabajo con selector de fila activa */
     .etapas-table th { background: #1e293b; color: #fff; font-size: 10.5px; text-align: center; }
-    .etapas-table td input { font-weight: normal; }
+    .etapas-table tr.etapa-activa { background: #fefce8; outline: 2px solid #f59e0b; }
+    .etapas-table tr { cursor: pointer; }
+    .etapa-badge { display: inline-block; padding: 2px 5px; border-radius: 3px; font-weight: bold; font-size: 11px; }
+    .etapa-activa .etapa-badge { background: #f59e0b; color: #000; }
 
     /* Grilla de Peligros y Medidas en 2 columnas */
     .pm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
@@ -81,24 +90,24 @@
     @media print {
       body { background: #fff; padding: 0; margin: 0; font-size: 7px; line-height: 1.05; }
       .container { border: none; box-shadow: none; padding: 0; max-width: 100%; }
-      .toolbar, .no-print, .btn-mini-clear { display: none !important; }
+      .toolbar, .saved-bar, .no-print, .btn-mini-clear { display: none !important; }
       table { margin-bottom: 3px; }
       th, td { padding: 1.5px 3px; font-size: 7px; }
       input[type="text"], input[type="date"] { font-size: 7px; height: 11px; }
       input::placeholder { color: transparent !important; }
+      .etapas-table tr.etapa-activa { background: transparent !important; outline: none !important; }
+      .etapa-activa .etapa-badge { background: transparent !important; color: #000 !important; padding: 0; }
       .brand-title { font-size: 13px; }
       .brand-sub { font-size: 7px; }
       .form-title { font-size: 11px; }
       .th-red, .crew-table th, .etapas-table th { background: #c00000 !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 7.5px; padding: 2px; }
       .th-gray { background: #e2e8f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 7px; }
 
-      /* Mantener 2 columnas en impresión para Peligros, Medidas y Otros */
       .pm-grid, .pm-others-grid { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 2px 6px !important; margin-bottom: 2px !important; }
       .pm-item { border: 1px solid #cbd5e1 !important; padding: 1px 3px !important; font-size: 6.4px !important; line-height: 1.04 !important; border-radius: 2px !important; gap: 3px !important; align-items: center !important; }
       .pm-chk { width: 9px !important; height: 9px !important; margin: 0 !important; }
       .pm-code { min-width: 16px !important; font-size: 6.5px !important; }
 
-      /* Mantener 5 columnas en impresión para EPP */
       .epp-grid { display: grid !important; grid-template-columns: repeat(5, 1fr) !important; gap: 2px !important; margin-bottom: 2px !important; }
       .epp-item { padding: 1.5px 2px !important; font-size: 5.8px !important; line-height: 1.02 !important; gap: 2px !important; }
       .epp-item input { width: 8px !important; height: 8px !important; margin: 0 !important; }
@@ -116,10 +125,20 @@
   <div class="toolbar no-print">
     <div><strong>PINTEGRALCO</strong> — Análisis de Trabajo Seguro (ATS)</div>
     <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <button type="button" class="btn-repeat" onclick="toggleBarraRepetir()">🔁 Repetir Tarea Anterior</button>
       <button type="button" class="btn-cloud" id="btnGuardarNube" onclick="enviarATSaDrive()">☁️ Guardar ATS en Nube</button>
       <button type="button" class="btn-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
       <button type="button" class="btn-clear" onclick="limpiarTodo()">Limpiar</button>
     </div>
+  </div>
+
+  <!-- PANEL DESPLEGABLE PARA REPETIR TAREA / AUTOCOMPLETAR -->
+  <div class="saved-bar no-print" id="barraRepetir">
+    <strong>🔁 Seleccionar ATS guardado en este equipo:</strong>
+    <select id="selectPlantillas"></select>
+    <button type="button" style="background:#16a34a; color:#fff;" onclick="cargarPlantillaSeleccionada()">Cargar datos</button>
+    <button type="button" style="background:#dc2626; color:#fff;" onclick="borrarPlantillaSeleccionada()">Borrar</button>
+    <span style="font-size:11px; color:#78350f; width:100%;">* Se autocompletan proyecto, etapas, peligros, medidas, EPP y nombres de cuadrilla; la fecha se actualiza a hoy y se limpian las firmas/días para la nueva semana.</span>
   </div>
 
   <!-- ENCABEZADO OFICIAL PTS-FT-004 -->
@@ -161,21 +180,24 @@
   </table>
 
   <!-- ETAPAS PRINCIPALES DEL TRABAJO -->
-  <table class="etapas-table">
+  <div class="no-print" style="font-size:10.5px; color:#475569; margin-bottom:3px;">
+    💡 <strong>Autocompletado rápido:</strong> Haz clic en una fila de etapa (1 a 5) para seleccionarla; al marcar riesgos o medidas abajo, se cargarán automáticamente en esa fila.
+  </div>
+  <table class="etapas-table" id="tablaEtapas">
     <thead>
       <tr>
-        <th style="width:5%;">N°</th>
-        <th style="width:45%;">ETAPAS PRINCIPALES DEL TRABAJO</th>
+        <th style="width:6%;">N°</th>
+        <th style="width:44%;">ETAPAS PRINCIPALES DEL TRABAJO</th>
         <th style="width:25%;">PELIGROS / RIESGOS (N° SEGÚN TABLA)</th>
         <th style="width:25%;">MEDIDAS DE CONTROL (LETRA SEGÚN TABLA)</th>
       </tr>
     </thead>
     <tbody>
-      <tr><td style="text-align:center;font-weight:bold;">1</td><td><input type="text" class="etapa-desc" /></td><td><input type="text" class="etapa-pel" placeholder="Ej: 1, 2, 10" /></td><td><input type="text" class="etapa-med" placeholder="Ej: A, B, K" /></td></tr>
-      <tr><td style="text-align:center;font-weight:bold;">2</td><td><input type="text" class="etapa-desc" /></td><td><input type="text" class="etapa-pel" /></td><td><input type="text" class="etapa-med" /></td></tr>
-      <tr><td style="text-align:center;font-weight:bold;">3</td><td><input type="text" class="etapa-desc" /></td><td><input type="text" class="etapa-pel" /></td><td><input type="text" class="etapa-med" /></td></tr>
-      <tr><td style="text-align:center;font-weight:bold;">4</td><td><input type="text" class="etapa-desc" /></td><td><input type="text" class="etapa-pel" /></td><td><input type="text" class="etapa-med" /></td></tr>
-      <tr><td style="text-align:center;font-weight:bold;">5</td><td><input type="text" class="etapa-desc" /></td><td><input type="text" class="etapa-pel" /></td><td><input type="text" class="etapa-med" /></td></tr>
+      <tr class="etapa-activa" onclick="seleccionarFilaEtapa(0)"><td style="text-align:center;"><span class="etapa-badge">1</span></td><td><input type="text" class="etapa-desc" placeholder="Escribe la etapa 1..." /></td><td><input type="text" class="etapa-pel" placeholder="Ej: 1, 2, 10" /></td><td><input type="text" class="etapa-med" placeholder="Ej: A, B, K" /></td></tr>
+      <tr onclick="seleccionarFilaEtapa(1)"><td style="text-align:center;"><span class="etapa-badge">2</span></td><td><input type="text" class="etapa-desc" placeholder="Escribe la etapa 2..." /></td><td><input type="text" class="etapa-pel" /></td><td><input type="text" class="etapa-med" /></td></tr>
+      <tr onclick="seleccionarFilaEtapa(2)"><td style="text-align:center;"><span class="etapa-badge">3</span></td><td><input type="text" class="etapa-desc" placeholder="Escribe la etapa 3..." /></td><td><input type="text" class="etapa-pel" /></td><td><input type="text" class="etapa-med" /></td></tr>
+      <tr onclick="seleccionarFilaEtapa(3)"><td style="text-align:center;"><span class="etapa-badge">4</span></td><td><input type="text" class="etapa-desc" placeholder="Escribe la etapa 4..." /></td><td><input type="text" class="etapa-pel" /></td><td><input type="text" class="etapa-med" /></td></tr>
+      <tr onclick="seleccionarFilaEtapa(4)"><td style="text-align:center;"><span class="etapa-badge">5</span></td><td><input type="text" class="etapa-desc" placeholder="Escribe la etapa 5..." /></td><td><input type="text" class="etapa-pel" /></td><td><input type="text" class="etapa-med" /></td></tr>
     </tbody>
   </table>
 
@@ -187,13 +209,13 @@
         <div class="pm-grid" id="grid-peligros"></div>
         <div style="margin-top:3px; border-top:1px solid #000; padding-top:3px;">
           <strong style="font-size:9px;">OTROS PELIGROS / RIESGOS IDENTIFICADOS:</strong>
-          <div class="pm-others-grid">
-            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="29" /><span class="pm-code">29</span><input type="text" placeholder="Otro peligro..." /></div>
-            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="32" /><span class="pm-code">32</span><input type="text" placeholder="Otro peligro..." /></div>
-            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="30" /><span class="pm-code">30</span><input type="text" placeholder="Otro peligro..." /></div>
-            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="33" /><span class="pm-code">33</span><input type="text" placeholder="Otro peligro..." /></div>
-            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="31" /><span class="pm-code">31</span><input type="text" placeholder="Otro peligro..." /></div>
-            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="34" /><span class="pm-code">34</span><input type="text" placeholder="Otro peligro..." /></div>
+          <div class="pm-others-grid" id="otros-peligros">
+            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="29" onchange="sincronizarCodigoEtapa(this, 'pel')" /><span class="pm-code">29</span><input type="text" placeholder="Otro peligro..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="32" onchange="sincronizarCodigoEtapa(this, 'pel')" /><span class="pm-code">32</span><input type="text" placeholder="Otro peligro..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="30" onchange="sincronizarCodigoEtapa(this, 'pel')" /><span class="pm-code">30</span><input type="text" placeholder="Otro peligro..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="33" onchange="sincronizarCodigoEtapa(this, 'pel')" /><span class="pm-code">33</span><input type="text" placeholder="Otro peligro..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="31" onchange="sincronizarCodigoEtapa(this, 'pel')" /><span class="pm-code">31</span><input type="text" placeholder="Otro peligro..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk" data-code="34" onchange="sincronizarCodigoEtapa(this, 'pel')" /><span class="pm-code">34</span><input type="text" placeholder="Otro peligro..." /></div>
           </div>
         </div>
       </td>
@@ -208,13 +230,13 @@
         <div class="pm-grid" id="grid-medidas"></div>
         <div style="margin-top:3px; border-top:1px solid #000; padding-top:3px;">
           <strong style="font-size:9px;">OTRAS MEDIDAS DE CONTROL A IMPLEMENTAR:</strong>
-          <div class="pm-others-grid">
-            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A5" /><span class="pm-code pm-code-ctrl">A5</span><input type="text" placeholder="Otra medida..." /></div>
-            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A8" /><span class="pm-code pm-code-ctrl">A8</span><input type="text" placeholder="Otra medida..." /></div>
-            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A6" /><span class="pm-code pm-code-ctrl">A6</span><input type="text" placeholder="Otra medida..." /></div>
-            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A9" /><span class="pm-code pm-code-ctrl">A9</span><input type="text" placeholder="Otra medida..." /></div>
-            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A7" /><span class="pm-code pm-code-ctrl">A7</span><input type="text" placeholder="Otra medida..." /></div>
-            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A10" /><span class="pm-code pm-code-ctrl">A10</span><input type="text" placeholder="Otra medida..." /></div>
+          <div class="pm-others-grid" id="otras-medidas">
+            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A5" onchange="sincronizarCodigoEtapa(this, 'med')" /><span class="pm-code pm-code-ctrl">A5</span><input type="text" placeholder="Otra medida..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A8" onchange="sincronizarCodigoEtapa(this, 'med')" /><span class="pm-code pm-code-ctrl">A8</span><input type="text" placeholder="Otra medida..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A6" onchange="sincronizarCodigoEtapa(this, 'med')" /><span class="pm-code pm-code-ctrl">A6</span><input type="text" placeholder="Otra medida..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A9" onchange="sincronizarCodigoEtapa(this, 'med')" /><span class="pm-code pm-code-ctrl">A9</span><input type="text" placeholder="Otra medida..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A7" onchange="sincronizarCodigoEtapa(this, 'med')" /><span class="pm-code pm-code-ctrl">A7</span><input type="text" placeholder="Otra medida..." /></div>
+            <div class="pm-item"><input type="checkbox" class="pm-chk pm-chk-ctrl" data-code="A10" onchange="sincronizarCodigoEtapa(this, 'med')" /><span class="pm-code pm-code-ctrl">A10</span><input type="text" placeholder="Otra medida..." /></div>
           </div>
         </div>
       </td>
@@ -315,6 +337,8 @@
 
 <script>
   const GOOGLE_SCRIPT_URL = "https://script.google.com/a/macros/pintegralco.com.ar/s/AKfycbx6ZxdpngJ-aojfGhZ7-86tnyhLpuqxik6Ql8JYyb5XKgtCudT4i9yP2v9AENCzRfWBDg/exec";
+  const STORAGE_KEY_ATS = "pintegralco_ats_plantillas_v1";
+  let filaEtapaActiva = 0;
 
   const PELIGROS = [
     ["1", "Trabajo en altura sobre 1,80 metros"],
@@ -387,8 +411,53 @@
     "SEMIMÁSCARAS C/ FILTRO VAPORES", "GUANTES DE VAQUETA", "CAMPERA DE SOLDADOR", "LÍNEA DE VIDA / ANCLAJE", "BOTAS PETROLERAS"
   ];
 
+  /* =========================================================
+     SINCRONIZACIÓN AUTOMÁTICA DE RIESGOS Y MEDIDAS EN LA ETAPA ACTIVA
+     ========================================================= */
+  function seleccionarFilaEtapa(idx) {
+    filaEtapaActiva = idx;
+    document.querySelectorAll("#tablaEtapas tbody tr").forEach((tr, i) => {
+      tr.classList.toggle("etapa-activa", i === idx);
+    });
+  }
+
+  function sincronizarCodigoEtapa(chk, tipo) {
+    const item = chk.closest(".pm-item");
+    if (item) {
+      item.classList.toggle(tipo === "med" ? "checked-ctrl" : "checked", chk.checked);
+    }
+    const codigo = chk.dataset.code;
+    const filas = document.querySelectorAll("#tablaEtapas tbody tr");
+    const fila = filas[filaEtapaActiva];
+    if (!fila) return;
+
+    const inputTarget = fila.querySelector(tipo === "pel" ? ".etapa-pel" : ".etapa-med");
+    let actuales = inputTarget.value
+      .split(",")
+      .map(s => s.trim())
+      .filter(s => s !== "");
+
+    if (chk.checked) {
+      if (!actuales.includes(codigo)) {
+        actuales.push(codigo);
+      }
+      inputTarget.value = actuales.join(", ");
+    } else {
+      // Si se desmarca, quitarlo de la fila activa (o de cualquier fila donde esté)
+      filas.forEach(tr => {
+        const inp = tr.querySelector(tipo === "pel" ? ".etapa-pel" : ".etapa-med");
+        const filtrados = inp.value
+          .split(",")
+          .map(s => s.trim())
+          .filter(s => s !== "" && s !== codigo);
+        inp.value = filtrados.join(", ");
+      });
+    }
+  }
+
   function renderCheckItems(containerId, lista, esControl) {
     const grid = document.getElementById(containerId);
+    const tipo = esControl ? "med" : "pel";
     lista.forEach(([cod, texto]) => {
       const label = document.createElement("label");
       label.className = "pm-item";
@@ -399,7 +468,7 @@
       `;
       const chk = label.querySelector("input");
       chk.addEventListener("change", () => {
-        label.classList.toggle(esControl ? "checked-ctrl" : "checked", chk.checked);
+        sincronizarCodigoEtapa(chk, tipo);
       });
       grid.appendChild(label);
     });
@@ -418,13 +487,13 @@
   }
 
   let operarioCount = 0;
-  function agregarFilaOperario() {
+  function agregarFilaOperario(nombrePrefill = "") {
     operarioCount++;
     const canvasId = "opSig_" + operarioCount;
     const tbody = document.getElementById("tbody-operarios");
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td class="name-cell"><input type="text" class="op-nombre" placeholder="Apellido y Nombre..." /></td>
+      <td class="name-cell"><input type="text" class="op-nombre" placeholder="Apellido y Nombre..." value="${nombrePrefill.replace(/"/g, '&quot;')}" /></td>
       <td class="sig-cell">
         <canvas id="${canvasId}" class="mini-sig"></canvas>
         <span class="btn-mini-clear no-print" onclick="limpiarCanvas('${canvasId}')">Borrar firma</span>
@@ -477,6 +546,208 @@
   function limpiarCanvas(id) {
     const c = document.getElementById(id);
     if (c) c.getContext("2d").clearRect(0, 0, c.width, c.height);
+  }
+
+  /* =========================================================
+     SISTEMA DE REPETIR TAREA / AUTOCOMPLETAR DESDE HISTORIAL LOCAL
+     ========================================================= */
+  function obtenerPlantillasGuardadas() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY_ATS) || "[]");
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function guardarPlantillaLocal() {
+    const proyecto = document.getElementById("proyecto").value.trim();
+    const descripcion = document.getElementById("descripcion").value.trim();
+    const sector = document.getElementById("sector").value.trim();
+    const lugar = document.getElementById("lugar").value.trim();
+    if (!proyecto && !descripcion) return;
+
+    const etapas = [];
+    document.querySelectorAll("#tablaEtapas tbody tr").forEach(tr => {
+      etapas.push({
+        desc: tr.querySelector(".etapa-desc").value,
+        pel: tr.querySelector(".etapa-pel").value,
+        med: tr.querySelector(".etapa-med").value
+      });
+    });
+
+    const peligrosCod = [];
+    document.querySelectorAll("#grid-peligros input:checked").forEach(c => peligrosCod.push(c.dataset.code));
+
+    const otrosPeligros = [];
+    document.querySelectorAll("#otros-peligros .pm-item").forEach(item => {
+      otrosPeligros.push({
+        checked: item.querySelector("input[type='checkbox']").checked,
+        text: item.querySelector("input[type='text']").value
+      });
+    });
+
+    const medidasCod = [];
+    document.querySelectorAll("#grid-medidas input:checked").forEach(c => medidasCod.push(c.dataset.code));
+
+    const otrasMedidas = [];
+    document.querySelectorAll("#otras-medidas .pm-item").forEach(item => {
+      otrasMedidas.push({
+        checked: item.querySelector("input[type='checkbox']").checked,
+        text: item.querySelector("input[type='text']").value
+      });
+    });
+
+    const eppsSel = [];
+    document.querySelectorAll("#grid-epp input:checked").forEach(c => eppsSel.push(c.value));
+
+    const nombresOperarios = [];
+    document.querySelectorAll(".op-nombre").forEach(inp => {
+      if (inp.value.trim()) nombresOperarios.push(inp.value.trim());
+    });
+
+    const plantilla = {
+      id: Date.now(),
+      titulo: `${proyecto || "Sin Proyecto"} — ${descripcion || "Sin descripción"} (${document.getElementById("fechaEjecucion").value})`,
+      proyecto,
+      descripcion,
+      sector,
+      lugar,
+      etapas,
+      peligrosCod,
+      otrosPeligros,
+      medidasCod,
+      otrasMedidas,
+      herramientas: document.getElementById("herramientas").value,
+      eppsSel,
+      otrosEpp: document.getElementById("otrosEpp").value,
+      nombresOperarios,
+      supNombre: document.getElementById("supNombre").value,
+      syhNombre: document.getElementById("syhNombre").value
+    };
+
+    let lista = obtenerPlantillasGuardadas();
+    lista = lista.filter(p => !(p.proyecto === proyecto && p.descripcion === descripcion));
+    lista.unshift(plantilla);
+    if (lista.length > 20) lista = lista.slice(0, 20);
+    localStorage.setItem(STORAGE_KEY_ATS, JSON.stringify(lista));
+    actualizarSelectorPlantillas();
+  }
+
+  function actualizarSelectorPlantillas() {
+    const sel = document.getElementById("selectPlantillas");
+    const lista = obtenerPlantillasGuardadas();
+    sel.innerHTML = "";
+    if (lista.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "No hay ATS guardados aún en este dispositivo";
+      sel.appendChild(opt);
+      return;
+    }
+    lista.forEach((p, idx) => {
+      const opt = document.createElement("option");
+      opt.value = idx;
+      opt.textContent = p.titulo;
+      sel.appendChild(opt);
+    });
+  }
+
+  function toggleBarraRepetir() {
+    const barra = document.getElementById("barraRepetir");
+    actualizarSelectorPlantillas();
+    barra.style.display = barra.style.display === "flex" ? "none" : "flex";
+  }
+
+  function cargarPlantillaSeleccionada() {
+    const idx = document.getElementById("selectPlantillas").value;
+    const lista = obtenerPlantillasGuardadas();
+    if (idx === "" || !lista[idx]) {
+      alert("No hay ningún ATS guardado seleccionado.");
+      return;
+    }
+    const p = lista[idx];
+
+    document.getElementById("proyecto").value = p.proyecto || "";
+    document.getElementById("descripcion").value = p.descripcion || "";
+    document.getElementById("sector").value = p.sector || "";
+    document.getElementById("lugar").value = p.lugar || "";
+    document.getElementById("fechaEjecucion").valueAsDate = new Date();
+    document.getElementById("fechaFin").value = "";
+    document.getElementById("observaciones").value = "";
+
+    // Primero marcar checkboxes (visual) y luego restaurar la distribución exacta por etapas
+    document.querySelectorAll("#grid-peligros input[type='checkbox']").forEach(chk => {
+      chk.checked = (p.peligrosCod || []).includes(chk.dataset.code);
+      chk.closest(".pm-item").classList.toggle("checked", chk.checked);
+    });
+
+    const itemsOtrosPel = document.querySelectorAll("#otros-peligros .pm-item");
+    (p.otrosPeligros || []).forEach((op, i) => {
+      if (itemsOtrosPel[i]) {
+        const c = itemsOtrosPel[i].querySelector("input[type='checkbox']");
+        c.checked = !!op.checked;
+        itemsOtrosPel[i].classList.toggle("checked", c.checked);
+        itemsOtrosPel[i].querySelector("input[type='text']").value = op.text || "";
+      }
+    });
+
+    document.querySelectorAll("#grid-medidas input[type='checkbox']").forEach(chk => {
+      chk.checked = (p.medidasCod || []).includes(chk.dataset.code);
+      chk.closest(".pm-item").classList.toggle("checked-ctrl", chk.checked);
+    });
+
+    const itemsOtrasMed = document.querySelectorAll("#otras-medidas .pm-item");
+    (p.otrasMedidas || []).forEach((om, i) => {
+      if (itemsOtrasMed[i]) {
+        const c = itemsOtrasMed[i].querySelector("input[type='checkbox']");
+        c.checked = !!om.checked;
+        itemsOtrasMed[i].classList.toggle("checked-ctrl", c.checked);
+        itemsOtrasMed[i].querySelector("input[type='text']").value = om.text || "";
+      }
+    });
+
+    const filasEtapas = document.querySelectorAll("#tablaEtapas tbody tr");
+    (p.etapas || []).forEach((et, i) => {
+      if (filasEtapas[i]) {
+        filasEtapas[i].querySelector(".etapa-desc").value = et.desc || "";
+        filasEtapas[i].querySelector(".etapa-pel").value = et.pel || "";
+        filasEtapas[i].querySelector(".etapa-med").value = et.med || "";
+      }
+    });
+
+    document.getElementById("herramientas").value = p.herramientas || "";
+    document.querySelectorAll("#grid-epp input[type='checkbox']").forEach(chk => {
+      chk.checked = (p.eppsSel || []).includes(chk.value);
+      chk.dispatchEvent(new Event("change"));
+    });
+    document.getElementById("otrosEpp").value = p.otrosEpp || "";
+
+    const tbody = document.getElementById("tbody-operarios");
+    tbody.innerHTML = "";
+    operarioCount = 0;
+    const nombres = p.nombresOperarios || [];
+    const totalFilas = Math.max(6, nombres.length);
+    for (let i = 0; i < totalFilas; i++) {
+      agregarFilaOperario(nombres[i] || "");
+    }
+
+    document.getElementById("supNombre").value = p.supNombre || "";
+    document.getElementById("syhNombre").value = p.syhNombre || "";
+    limpiarCanvas("sigSup");
+    limpiarCanvas("sigSyh");
+
+    document.getElementById("barraRepetir").style.display = "none";
+    alert("✅ Datos de la tarea anterior cargados. Solo falta que los operarios firmen y marquen sus días de esta semana.");
+  }
+
+  function borrarPlantillaSeleccionada() {
+    const idx = document.getElementById("selectPlantillas").value;
+    let lista = obtenerPlantillasGuardadas();
+    if (idx === "" || !lista[idx]) return;
+    if (!confirm("¿Eliminar esta tarea guardada de la lista?")) return;
+    lista.splice(idx, 1);
+    localStorage.setItem(STORAGE_KEY_ATS, JSON.stringify(lista));
+    actualizarSelectorPlantillas();
   }
 
   function prepararSnapshotHTML() {
@@ -543,6 +814,8 @@
       return;
     }
 
+    guardarPlantillaLocal();
+
     btn.disabled = true;
     btn.textContent = "⏳ Guardando ATS...";
 
@@ -553,7 +826,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      alert("✅ ATS guardado correctamente en el Excel y respaldo PDF en Drive.");
+      alert("✅ ATS guardado en la nube y guardado en 'Repetir Tarea Anterior' para próximas semanas.");
     } catch (e) {
       alert("⚠️ Error de conexión. Verifica tu señal de internet e intenta de nuevo.");
     } finally {
@@ -565,9 +838,16 @@
   function limpiarTodo() {
     if (!confirm("¿Limpiar todo el formulario ATS?")) return;
     document.querySelectorAll("input[type='text']").forEach(i => i.value = "");
-    document.querySelectorAll("input[type='checkbox']").forEach(c => { c.checked = false; c.dispatchEvent(new Event("change")); });
+    document.querySelectorAll("input[type='checkbox']").forEach(c => {
+      c.checked = false;
+      const item = c.closest(".pm-item");
+      if (item) item.classList.remove("checked", "checked-ctrl");
+      const eppItem = c.closest(".epp-item");
+      if (eppItem) eppItem.classList.remove("checked");
+    });
     document.querySelectorAll("canvas").forEach(c => limpiarCanvas(c.id));
     document.getElementById("fechaEjecucion").valueAsDate = new Date();
+    seleccionarFilaEtapa(0);
   }
 
   window.addEventListener("DOMContentLoaded", () => {
@@ -580,6 +860,8 @@
     document.getElementById("fechaEjecucion").valueAsDate = new Date();
     initPad("sigSup");
     initPad("sigSyh");
+    actualizarSelectorPlantillas();
+    seleccionarFilaEtapa(0);
   });
 </script>
 </body>
